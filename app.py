@@ -1,94 +1,67 @@
+from flask import Flask, render_template, request, redirect, url_for
 from expense import Expense
 import calendar
 import datetime as dt
+import os
 
-def main():
-    print(f"----------Expense Tracker!----------\n")
-    expense = getInput()
-    print(expense)
-    
-    expenseFile = "expenses.csv"
-    saveToFile(expense, expenseFile)
+app = Flask(__name__)
+expense_file = "expenses.csv"
+total_budget = 30000
 
-    totalBudget = 30000
-    summaryOfExpenses(expenseFile, totalBudget)
-    
+expense_categories = ["Food", "Home", "Work", "Fun", "Other"]
 
-def getInput():
-    print("-->Getting your input...")
-    expenseName = input("Enter expense name:")
-    expenseAmount = float(input("Enter expense amount:"))
-    
-    print(f"Your expense name: {expenseName}\nYour expense amount: {expenseAmount}")
-
-    expenseCategories = [
-        "Food", "Home", "Work", "Fun", "Other"
-        ]
-    while True:
-        print("Select your category:")
-        for i, categoryName in enumerate(expenseCategories):
-            print(f"    {i+1}. {categoryName}")
-
-        valueRange = f"[1 - {len(expenseCategories)}]"
-        selected = int(input(f"Enter catory's number {valueRange}:"))
-
-        if selected-1 in range(0,len(expenseCategories)):
-            selectedCategory = expenseCategories[selected-1]
-            # print(selectedCategory)
-            newExpense = Expense(
-                name=expenseName, 
-                category=selectedCategory,
-                amount=expenseAmount
-                )
-            return newExpense
-        else:
-            print("Invalid Category!")
-            
-def saveToFile(expense: Expense, filename):
-    print(f"-->Saving Your Expense: {expense} to {filename} ")
-    with open(filename, "a") as f:
+# Helper function to save expense
+def save_to_file(expense: Expense):
+    with open(expense_file, "a") as f:
         f.write(f"{expense.name},{expense.amount},{expense.category}\n")
 
-    print("Saved !")
-    
-def summaryOfExpenses(fileName, budget):
-    print("--> Summary of Your Expenses....\n")
-    expenses: list[Expense] = []
-    with open(fileName, "r") as f:
-        readExpenses = f.readlines()
-        for line in readExpenses:
-            # print(line)
-            exName, exAmount, exCategory = line.strip().split(",")
-            thisExpense = Expense(name=exName, amount=float(exAmount), category=exCategory)
-            # print(thisExpense)
-            expenses.append(thisExpense)
-    # print(expenses)
+# Helper function to read expenses
+def read_expenses():
+    expenses = []
+    if os.path.exists(expense_file):
+        with open(expense_file, "r") as f:
+            for line in f.readlines():
+                exName, exAmount, exCategory = line.strip().split(",")
+                expenses.append(Expense(exName, exCategory, float(exAmount)))
+    return expenses
 
-    amountByCategory = {}
+# Helper function for summary
+def get_summary(expenses):
+    amount_by_category = {}
     for expense in expenses:
-        key = expense.category
-        if key in amountByCategory:
-            amountByCategory[key] += expense.amount
-        else:
-            amountByCategory[key] = expense.amount
-    # print(amountByCategory)
-    print("----------Expense By Category----------")
-    for key, amount in amountByCategory.items():
-        print(f">> {key} : Rs.{amount}")
+        amount_by_category[expense.category] = amount_by_category.get(expense.category, 0) + expense.amount
 
-    print("\n----------Budget----------")
-    totalSpent = sum([ex.amount for ex in expenses])
-    print(f"Total Spent: Rs.{totalSpent:.2f}")
-    remainingBudget = budget - totalSpent
-    print(f"Remaining Budget: Rs.{remainingBudget:.2f}")
+    total_spent = sum(ex.amount for ex in expenses)
+    remaining_budget = total_budget - total_spent
 
-    print("\n----------Remaining Days For Budget----------")
     now = dt.datetime.now()
-    daysInMonth = calendar.monthrange(now.year, now.month)[1]
-    remainingDaysInMonth = daysInMonth - now.day
-    dailyBudget = remainingBudget /remainingDaysInMonth
-    print(f"Budget Per Day Left: Rs.{dailyBudget}")
+    days_in_month = calendar.monthrange(now.year, now.month)[1]
+    remaining_days = days_in_month - now.day
+    daily_budget = remaining_budget / remaining_days if remaining_days > 0 else 0
+
+    return amount_by_category, total_spent, remaining_budget, daily_budget
+
+# ----- Routes -----
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        name = request.form["name"]
+        amount = float(request.form["amount"])
+        category = request.form["category"]
+        expense = Expense(name, category, amount)
+        save_to_file(expense)
+        return redirect(url_for("index"))
+
+    expenses = read_expenses()
+    summary = get_summary(expenses)
+    return render_template("index.html", categories=expense_categories, summary=summary)
+
+@app.route("/full_budget")
+def full_budget():
+    expenses = read_expenses()
+    summary = get_summary(expenses)
+    return render_template("full_budget.html", expenses=expenses, summary=summary)
 
 
-if __name__ == "__main__":  # only true when you run this file directly
-    main()  # to run it
+if __name__ == "__main__":
+    app.run(debug=True)

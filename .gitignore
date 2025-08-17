@@ -1,0 +1,33 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# PyCharm project files
+.idea/
+*.iml
+
+# Byte-compiled / optimized / DLL files
+*.so
+*.dylib
+*.dll
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+*.csv  # Optional: ignore CSV if you don’t want to track expenses.csv
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# VSCode settings (if you ever use it)
+.vscode/
