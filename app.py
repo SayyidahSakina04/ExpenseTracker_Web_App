@@ -10,7 +10,7 @@ total_budget = 30000
 
 expense_categories = ["Food", "Home", "Work", "Fun", "Other"]
 
-# Helper function to save expense
+# Helper function to save expenses
 def save_to_file(expense: Expense):
     with open(expense_file, "a") as f:
         f.write(f"{expense.name},{expense.amount},{expense.category}\n")
